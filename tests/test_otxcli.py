@@ -48,6 +48,7 @@ ATTEMPTS = 6
 
 client = OTXClient(API_KEY, timeout=TIMEOUT)
 _known_pulse_id = ""
+_transient_failures: set[str] = set()
 
 
 def backoff(attempt: int) -> None:
@@ -74,13 +75,18 @@ def call(func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
 
 def call_or_skip_transient(func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
     """Skip when the live OTX service stays down after the retry budget."""
+    name = getattr(func, "__qualname__", repr(func))
+    if name in _transient_failures:
+        raise unittest.SkipTest(f"OTX endpoint unavailable: {name}")
     try:
         return call(func, *args, **kwargs)
     except OTXError as error:
         if error.status >= 500:
+            _transient_failures.add(name)
             raise unittest.SkipTest(f"OTX endpoint unavailable: {error}") from error
         raise
     except OSError as error:
+        _transient_failures.add(name)
         raise unittest.SkipTest(f"OTX endpoint unavailable: {error}") from error
 
 
