@@ -156,6 +156,21 @@ def _invoke(namespace: argparse.Namespace) -> Any:
     return method(**_method_kwargs(namespace))
 
 
+def _print_result(result: Any) -> int:
+    try:
+        print(json.dumps(result, indent=2, sort_keys=True))
+        sys.stdout.flush()
+    except OSError:
+        # stdout is gone: a closed pipe (`otx ... | head`) raises EPIPE on POSIX and EINVAL on
+        # Windows. Point the file descriptor at devnull so the exit-time flush stays quiet,
+        # without rebinding sys.stdout for the rest of the process.
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
+        os.close(devnull)
+        return 1
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     namespace = build_parser().parse_args(argv)
     if namespace.api_key is None:
@@ -164,17 +179,9 @@ def main(argv: list[str] | None = None) -> int:
         print("No API key: pass --api-key or set OTX_API_KEY", file=sys.stderr)
         return 1
     try:
-        print(json.dumps(_invoke(namespace), indent=2, sort_keys=True))
-        sys.stdout.flush()
+        result = _invoke(namespace)
     except OTXError as error:
         print(str(error), file=sys.stderr)
-        return 1
-    except BrokenPipeError:
-        # Reading end went away (`otx ... | head`). Point the file descriptor at devnull so the
-        # exit-time flush stays quiet, without rebinding sys.stdout for the rest of the process.
-        devnull = os.open(os.devnull, os.O_WRONLY)
-        os.dup2(devnull, sys.stdout.fileno())
-        os.close(devnull)
         return 1
     except OSError as error:
         print(f"I/O error: {error}", file=sys.stderr)
@@ -182,4 +189,4 @@ def main(argv: list[str] | None = None) -> int:
     except (HTTPException, ValueError, OverflowError) as error:
         print(f"Invalid request: {error}", file=sys.stderr)
         return 1
-    return 0
+    return _print_result(result)

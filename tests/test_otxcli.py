@@ -434,7 +434,8 @@ class CliTests(unittest.TestCase):
             sys.stdout = original
             try:
                 stream.close()
-            except BrokenPipeError:
+            except OSError:
+                # POSIX reports the broken pipe as BrokenPipeError, Windows as EINVAL.
                 pass
         return code, err.getvalue(), kept_stdout
 
