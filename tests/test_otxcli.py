@@ -40,10 +40,11 @@ PULSE_FIELDS: dict[str, Any] = {
     ],
 }
 
-# Retry budget: OTX is flaky enough to need retries, but a sick endpoint must not stall the
-# suite. Worst case per call is ATTEMPTS * TIMEOUT + 14s of backoff, about three minutes.
+# Retry budget: OTX is flaky enough to need retries (its pulse-feed endpoints 502 for
+# stretches of many minutes), but a sick endpoint must not stall the suite forever. Worst
+# case per call is ATTEMPTS * TIMEOUT + 62s of backoff, about five and a half minutes.
 TIMEOUT = 45.0
-ATTEMPTS = 4
+ATTEMPTS = 6
 
 client = OTXClient(API_KEY, timeout=TIMEOUT)
 _known_pulse_id = ""
