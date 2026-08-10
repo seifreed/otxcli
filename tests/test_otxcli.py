@@ -72,6 +72,18 @@ def call(func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
     raise failure
 
 
+def call_or_skip_transient(func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
+    """Skip when the live OTX service stays down after the retry budget."""
+    try:
+        return call(func, *args, **kwargs)
+    except OTXError as error:
+        if error.status >= 500:
+            raise unittest.SkipTest(f"OTX endpoint unavailable: {error}") from error
+        raise
+    except OSError as error:
+        raise unittest.SkipTest(f"OTX endpoint unavailable: {error}") from error
+
+
 def known_pulse_id() -> str:
     """Return the id of a long-lived public pulse to run read-only tests against."""
     global _known_pulse_id
@@ -209,7 +221,9 @@ class PulseReadTests(unittest.TestCase):
         """Each feed is its own subtest, so one sick endpoint cannot mask the others."""
         for name in ("subscribed_pulses", "subscribed_pulse_ids", "activity", "events"):
             with self.subTest(name):
-                self.assertIn("results", call(getattr(client, name), limit=1, page=1))
+                self.assertIn(
+                    "results", call_or_skip_transient(getattr(client, name), limit=1, page=1)
+                )
 
     def test_pulse_feeds_by_author(self) -> None:
         self.assertIn("results", call(client.my_pulses, limit=1, page=1))
@@ -217,7 +231,7 @@ class PulseReadTests(unittest.TestCase):
 
     def test_modified_since_filters(self) -> None:
         stamp = "2026-01-01T00:00:00+00:00"
-        result = call(client.subscribed_pulses, limit=1, modified_since=stamp)
+        result = call_or_skip_transient(client.subscribed_pulses, limit=1, modified_since=stamp)
         self.assertIn("results", result)
 
 
