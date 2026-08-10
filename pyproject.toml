@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "otxcli"
+dynamic = ["version"]
+description = "CLI and Python library for the AlienVault OTX v1 API"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.14"
+authors = [{ name = "Marc Rivero Lopez" }]
+keywords = ["otx", "alienvault", "threat-intelligence", "security"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Information Technology",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Security",
+]
+# 3.15 is the floor, not a preference: earlier releases carry a ReDoS in idna.encode()
+# (PYSEC-2026-215), the call this package makes with externally supplied domain names.
+dependencies = ["idna>=3.15"]
+
+# Single dependency file: runtime deps above, development deps below.
+[project.optional-dependencies]
+dev = [
+    "black",
+    "ruff",
+    "mypy",
+    "bandit",
+    "pip-audit",
+    "pytest",
+    "pytest-cov",
+]
+
+[project.scripts]
+otx = "otxcli.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/seifreed/otxcli"
+Documentation = "https://otx.alienvault.com/assets/static/external_api.html"
+
+[tool.setuptools.dynamic]
+version = { attr = "otxcli.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["otxcli*"]
+
+[tool.setuptools.package-data]
+otxcli = ["py.typed"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+extend-select = ["I", "E", "W", "UP", "B"]
+
+[tool.black]
+line-length = 100
+target-version = ["py314"]
+
+[tool.mypy]
+strict = true
+
+[tool.pytest.ini_options]
+addopts = "--cov --cov-report=term-missing"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["otxcli"]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true

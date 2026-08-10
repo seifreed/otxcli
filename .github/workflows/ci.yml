@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      # The integration tests hit the live OTX API with one shared account, so the
+      # platforms run one at a time to keep account state races out of the suite.
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Format
+        run: black --check .
+      - name: Lint
+        run: ruff check .
+      - name: Types
+        run: mypy .
+      - name: Security
+        run: bandit -r .
+      - name: Dependency audit
+        run: pip-audit
+      - name: Tests
+        env:
+          OTX_API_KEY: ${{ secrets.OTX_API_KEY }}
+        run: pytest
