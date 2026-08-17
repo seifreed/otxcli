@@ -8,7 +8,7 @@ from otxcli.client import (
     OTXError,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.1.2"
 __all__ = [
     "DEFAULT_SECTION",
     "DEFAULT_SERVER",
